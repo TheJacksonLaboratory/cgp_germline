@@ -1,0 +1,142 @@
+#!/bin/bash
+#PBS -N vep_gatk4_hc                                # name of the job
+#PBS -d /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs                                    # the workding dir for each job, this is <flow_run_path>/uniqueid/tmp
+#PBS -o /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs/log_vep_gatk4_hc.out                                 # output is sent to logfile, stdout + stderr by default
+#PBS -e /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs/log_vep_gatk4_hc.err                                 # output is sent to logfile, stdout + stderr by default
+#PBS -q batch                                  # Job queue
+#PBS -l walltime=48:00:00                      # Walltime in minutes
+#PBS -l mem=32gb                             # Memory requirements in Kbytes
+#PBS -l nodes=1:ppn=6                 # CPU reserved
+#PBS -M amins@jax.org                           # for notifications
+#PBS -m a                              # send email when job ends 
+#PBS -r y                                         # make the jobs re-runnable
+#PBS -S /bin/bash                                 # use bash shell
+#PBS -V                                           # pass user env
+#PBS -j oe
+#PBS                                 # Any extra arguments passed onto queue
+
+## --- DO NOT EDIT from below here---- ##
+## following will always overwrite previous output file, if any.
+set +o noclobber
+
+## sleep for n seconds before running any command
+FORCEWAIT=$(shuf -i 2-10 -n 1)
+printf "\nWaiting for %s seconds before starting workflow\n" "${FORCEWAIT:-10}"
+sleep "${FORCEWAIT}"
+
+## pass envrionment variables and bash confligs on-the-fly while job is running
+## source default flowrvars.sh unless user has exe file with same name under ~/bin/
+if [[ -s "${HOME}"/bin/flowrvars.sh && -x "${HOME}"/bin/flowrvars.sh ]]; then
+    # source by prefix . else env variable may not get exported to parent script
+    . "${HOME}"/bin/flowrvars.sh
+elif [[ -s "${RVSETENV}"/bin/flowrvars.sh && -x "${RVSETENV}"/bin/flowrvars.sh ]]; then
+    # source by prefix . else env variable may not get exported to parent script
+    . "${RVSETENV}"/bin/flowrvars.sh
+fi
+
+printf "####\nPINGSTARTSLACK exported as %s\nPINGENDSLACK exported as %s\n####" "${PINGSTARTSLACK:-NO}" "${PINGENDSLACK:-NO}"
+
+echo "BEGIN at $(date)"
+
+## notify slack when job starts if env variable PINGSTARTSLACK is set to YES
+
+if [[ "${PINGSTARTSLACK}" == "YES" && -x "${HOME}"/bin/pingme ]]; then
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    STARTMSG="MYJOB ID: vep_gatk4_hc starting at ${CWD} on $(hostname) for ${USER}"
+    ssh helix "${HOME}/bin/pingme -u ${USER} -i warning -m "\"${STARTMSG}\""" >> /dev/null 2>&1 &
+    sleep 5
+    echo -e "\n${STARTMSG}\n"
+elif [[ "${PINGSTARTSLACK}" == "YES" && -x "${RVSETENV}"/bin/pingme ]]; then
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    STARTMSG="MYJOB ID: vep_gatk4_hc starting at ${CWD} on $(hostname) for ${USER}"
+    ssh helix "${RVSETENV}/bin/pingme -u ${USER} -i warning -m "\"${STARTMSG}\""" >> /dev/null 2>&1 &
+    sleep 5
+    echo -e "\n${STARTMSG}\n"
+fi
+
+## Set TMPDIR if -s YES
+TMPDIR=/scratch
+export TMPDIR
+echo "TMPDIR is ${TMPDIR}"
+
+## File containing commands will be copied here verbatim ##
+
+###################### START USER SUPPLIED COMMANDS ######################
+
+#!/bin/bash
+
+## Annotate filtered germline variants
+## Samir B. Amin, @sbamin
+
+## Using gatk 4.0.9.0
+module load rvgatk4/4.0.9.0
+## load bcftools
+module load rvhtsenv/1.6
+
+WORKDIR="/fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs"
+cd "$WORKDIR" && echo "Workdir is $(pwd)"
+
+FILTSNP="cgp_gatk4_hc_merged_paired_genotyped_n56normals_rawsnps_hardfilt_snps.vcf.gz"
+FILTINDEL="cgp_gatk4_hc_merged_paired_genotyped_n56normals_rawindels_hardfilt_indels.vcf.gz"
+
+TSTAMP=$(date +%d%b%y_%H%M%S%Z)
+printf "\nLOGGER\t%s\tSTART\tPASSsnps\t%s\n" "$TSTAMP" "$FILTSNP"
+
+## extract PASS calls but only output one of multi-sample vcf; do not update INFO fields as we extract one sample only for vcf2maf.pl to work
+## sample-level FORMAT details are ignored in mafs.
+bcftools view --threads 4 -S vep_samples.tsv -I -f PASS -O v -o cgp_gatk4_hc_merged_paired_genotyped_n56normals_pass_snps_hardfilt.vcf "${FILTSNP}" && \
+	touch pass_snps.done && \
+	~/pipelines/cgp_varcalls/scripts/mk_vcf2maf_germline.sh -s cgp -n S01-4990-T6-A2-B12 -f GATK4HC -m normal -c 4 -v germline_snp -p "$WORKDIR"/cgp_gatk4_hc_merged_paired_genotyped_n56normals_pass_snps_hardfilt.vcf > vep_germline_snp.log 2>&1 &
+
+bcftools view --threads 4 -S vep_samples.tsv -I -f PASS -O v -o cgp_gatk4_hc_merged_paired_genotyped_n56normals_pass_indels_hardfilt.vcf "${FILTINDEL}" && \
+	touch pass_indels.done && \
+	~/pipelines/cgp_varcalls/scripts/mk_vcf2maf_germline.sh -s cgp -n S01-4990-T6-A2-B12 -f GATK4HC -m normal -c 4 -v germline_indel -p "$WORKDIR"/cgp_gatk4_hc_merged_paired_genotyped_n56normals_pass_indels_hardfilt.vcf > vep_germline_indel.log 2>&1 &
+
+wait %1 %2
+
+## END ##
+
+###################### END USER SUPPLIED COMMANDS ######################
+
+exitstat=$?
+
+echo "END at $(date)"
+
+# notify slack if error
+if [[ "${FORCESTOPSLACK}" == "YES" ]]; then
+    WARNMSG="MYJOB ID: vep_gatk4_hc exited at ${CWD} on $(hostname) for ${USER} with exit status: ${exitstat}"
+    echo -e "\n${WARNMSG}\n"
+elif [[ "${exitstat}" != 0 && -x "${RVSETENV}"/bin/pingme ]] || [[ "${exitstat}" != 0 && "${PINGENDSLACK}" == "YES" && -x "${RVSETENV}"/bin/pingme ]]; then
+    ERRMSG="MYJOB ID: vep_gatk4_hc failed at ${CWD} on $(hostname) for ${USER} with exit status: ${exitstat}"
+
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    if [[ -s "${HOME}"/bin/pingme && -x "${HOME}"/bin/pingme ]]; then
+        ssh helix "${HOME}/bin/pingme -u ${USER} -i warning -m "\"${ERRMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    else
+        ssh helix "${RVSETENV}/bin/pingme -u ${USER} -i warning -m "\"${ERRMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    fi
+
+    echo -e "\n${ERRMSG}\n"
+
+elif [[ "${exitstat}" == 0 && "${PINGENDSLACK}" == "YES" && -s "${RVSETENV}"/bin/pingme ]]; then
+    PASSMSG="MYJOB ID: vep_gatk4_hc is complete at ${CWD} on $(hostname) for ${USER} with exit status: ${exitstat}"
+
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    if [[ -s "${HOME}"/bin/pingme && -x "${HOME}"/bin/pingme ]]; then
+        ssh helix "${HOME}/bin/pingme -u ${USER} -i white_check_mark -m "\"${PASSMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    else
+        ssh helix "${RVSETENV}/bin/pingme -u ${USER} -i white_check_mark -m "\"${PASSMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    fi
+
+    echo -e "\n${PASSMSG}\n"
+fi
+
+echo "exit status was ${exitstat}"
+exit ${exitstat}
+
+## END ##
+

@@ -1,0 +1,7 @@
+.DS_Store
+flowr/Rplots.pdf
+/run_flow/*
+!/run_flow/varscan2_runs
+!/run_flow/vcf_merge
+flowr/tmp/*
+!/archive/**

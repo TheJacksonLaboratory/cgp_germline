@@ -1,0 +1,63 @@
+
+Waiting for 10 seconds before starting workflow
+
+####
+Passing on-the-fly environment variables
+Sourcing script: /home/amins/bin/flowrvars.sh
+####
+
+PINGSTARTSLACK set to NO
+PINGENDSLACK set to NO
+FORCESTOPSLACK set to NO
+
+/projects/verhaak-lab size is 79 percent
+Quota limit is 99 percent
+
+
+/fastscratch/ size is 58
+Quota is 99 percent
+
+
+####
+Completed sourcing script: /home/amins/bin/flowrvars.sh
+Exit code: 0
+####
+
+####
+PINGSTARTSLACK exported as NO
+PINGENDSLACK exported as NO
+####BEGIN at Sat Dec 29 09:36:44 EST 2018
+TMPDIR is /scratch
+
+Loaded HTSlib, samtools and bcftools v1.6
+Use v1.8 for libgsl support and advanced perl filters
+
+/projects/verhaak-lab/verhaak_env/verhaak_apps/bcftools/v1.6/bin/bcftools
+bcftools 1.6
+Using htslib 1.6
+Copyright (C) 2016 Genome Research Ltd.
+License Expat: The MIT/Expat license
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+LOGGER	29Dec18_093645EST	START	ConcatVCFs	0
+
+LOGGER	29Dec18_094856EST	END	ConcatVCFs	0
+END at Sat Dec 29 09:48:56 EST 2018
+exit status was 0
+
+
+--------------------------------------------------------------------------------
+|  JAX TORQUE EPILOGUE
+|
+|  Job ID: 8949146.helix-master
+|  Exit Status: 0
+|  Requested Resources:
+|      mem=32gb,nodes=1:ppn=6,walltime=04:00:00
+|  Resources Consumed:
+|      cput=01:20:00,mem=19596kb,vmem=789656kb,walltime=00:12:22
+|  Walltime accuracy: 5.2%
+|
+| Epilogue Host (TORQUE Mother Superior): helix039
+|
+--------------------------------------------------------------------------------

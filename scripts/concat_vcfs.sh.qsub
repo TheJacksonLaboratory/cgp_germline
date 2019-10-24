@@ -1,0 +1,180 @@
+#!/bin/bash
+#PBS -N concat_vcfs                                # name of the job
+#PBS -d /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs                                    # the workding dir for each job, this is <flow_run_path>/uniqueid/tmp
+#PBS -o /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs/log_concat_vcfs.out                                 # output is sent to logfile, stdout + stderr by default
+#PBS -e /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs/log_concat_vcfs.err                                 # output is sent to logfile, stdout + stderr by default
+#PBS -q batch                                  # Job queue
+#PBS -l walltime=04:00:00                      # Walltime in minutes
+#PBS -l mem=32gb                             # Memory requirements in Kbytes
+#PBS -l nodes=1:ppn=6                 # CPU reserved
+#PBS -M amins@jax.org                           # for notifications
+#PBS -m a                              # send email when job ends 
+#PBS -r y                                         # make the jobs re-runnable
+#PBS -S /bin/bash                                 # use bash shell
+#PBS -V                                           # pass user env
+#PBS -j oe
+#PBS                                 # Any extra arguments passed onto queue
+
+## --- DO NOT EDIT from below here---- ##
+## following will always overwrite previous output file, if any.
+set +o noclobber
+
+## sleep for n seconds before running any command
+FORCEWAIT=$(shuf -i 2-10 -n 1)
+printf "\nWaiting for %s seconds before starting workflow\n" "${FORCEWAIT:-10}"
+sleep "${FORCEWAIT}"
+
+## pass envrionment variables and bash confligs on-the-fly while job is running
+## source default flowrvars.sh unless user has exe file with same name under ~/bin/
+if [[ -s "${HOME}"/bin/flowrvars.sh && -x "${HOME}"/bin/flowrvars.sh ]]; then
+    # source by prefix . else env variable may not get exported to parent script
+    . "${HOME}"/bin/flowrvars.sh
+elif [[ -s "${RVSETENV}"/bin/flowrvars.sh && -x "${RVSETENV}"/bin/flowrvars.sh ]]; then
+    # source by prefix . else env variable may not get exported to parent script
+    . "${RVSETENV}"/bin/flowrvars.sh
+fi
+
+printf "####\nPINGSTARTSLACK exported as %s\nPINGENDSLACK exported as %s\n####" "${PINGSTARTSLACK:-NO}" "${PINGENDSLACK:-NO}"
+
+echo "BEGIN at $(date)"
+
+## notify slack when job starts if env variable PINGSTARTSLACK is set to YES
+
+if [[ "${PINGSTARTSLACK}" == "YES" && -x "${HOME}"/bin/pingme ]]; then
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    STARTMSG="MYJOB ID: concat_vcfs starting at ${CWD} on $(hostname) for ${USER}"
+    ssh helix "${HOME}/bin/pingme -u ${USER} -i warning -m "\"${STARTMSG}\""" >> /dev/null 2>&1 &
+    sleep 5
+    echo -e "\n${STARTMSG}\n"
+elif [[ "${PINGSTARTSLACK}" == "YES" && -x "${RVSETENV}"/bin/pingme ]]; then
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    STARTMSG="MYJOB ID: concat_vcfs starting at ${CWD} on $(hostname) for ${USER}"
+    ssh helix "${RVSETENV}/bin/pingme -u ${USER} -i warning -m "\"${STARTMSG}\""" >> /dev/null 2>&1 &
+    sleep 5
+    echo -e "\n${STARTMSG}\n"
+fi
+
+## Set TMPDIR if -s YES
+TMPDIR=/scratch
+export TMPDIR
+echo "TMPDIR is ${TMPDIR}"
+
+## File containing commands will be copied here verbatim ##
+
+###################### START USER SUPPLIED COMMANDS ######################
+
+#!/bin/bash
+
+## load bcftools
+module load rvhtsenv/1.6
+command -v bcftools
+bcftools --version || true
+
+OUTDIR="/fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs"
+cd "$OUTDIR" || exit
+
+OUTVCF="cgp_gatk4_hc_merged_paired_genotyped_n56normals.vcf.gz"
+
+## swap TMPDIR
+## Not needed unless ramdisk gets full
+TMPDIR="/fastscratch/amins/tmp"
+mkdir -p "$TMPDIR" && export TMPDIR
+
+TSTAMP=$(date +%d%b%y_%H%M%S%Z)
+printf "\nLOGGER\t%s\tSTART\tConcatVCFs\t0\n" "$TSTAMP"
+
+bcftools concat \
+	--output-type z --threads 6 \
+	--output "${OUTVCF}" \
+	"${OUTDIR}"/gatk4_hc_merged_paired_1.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_2.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_3.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_4.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_5.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_6.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_7.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_8.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_9.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_10.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_11.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_12.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_13.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_14.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_15.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_16.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_17.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_18.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_19.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_20.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_21.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_22.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_23.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_24.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_25.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_26.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_27.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_28.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_29.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_30.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_31.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_32.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_33.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_34.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_35.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_36.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_37.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_38.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_MT.genotyped.vcf.gz \
+	"${OUTDIR}"/gatk4_hc_merged_paired_X.genotyped.vcf.gz && \
+	touch bcftools_concat_n56.done
+
+exitstat=$? && \
+TSTAMP=$(date +%d%b%y_%H%M%S%Z) && \
+printf "\nLOGGER\t%s\tEND\tConcatVCFs\t%s\n" "$TSTAMP" "$exitstat"
+
+## END ##
+
+###################### END USER SUPPLIED COMMANDS ######################
+
+exitstat=$?
+
+echo "END at $(date)"
+
+# notify slack if error
+if [[ "${FORCESTOPSLACK}" == "YES" ]]; then
+    WARNMSG="MYJOB ID: concat_vcfs exited at ${CWD} on $(hostname) for ${USER} with exit status: ${exitstat}"
+    echo -e "\n${WARNMSG}\n"
+elif [[ "${exitstat}" != 0 && -x "${RVSETENV}"/bin/pingme ]] || [[ "${exitstat}" != 0 && "${PINGENDSLACK}" == "YES" && -x "${RVSETENV}"/bin/pingme ]]; then
+    ERRMSG="MYJOB ID: concat_vcfs failed at ${CWD} on $(hostname) for ${USER} with exit status: ${exitstat}"
+
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    if [[ -s "${HOME}"/bin/pingme && -x "${HOME}"/bin/pingme ]]; then
+        ssh helix "${HOME}/bin/pingme -u ${USER} -i warning -m "\"${ERRMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    else
+        ssh helix "${RVSETENV}/bin/pingme -u ${USER} -i warning -m "\"${ERRMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    fi
+
+    echo -e "\n${ERRMSG}\n"
+
+elif [[ "${exitstat}" == 0 && "${PINGENDSLACK}" == "YES" && -s "${RVSETENV}"/bin/pingme ]]; then
+    PASSMSG="MYJOB ID: concat_vcfs is complete at ${CWD} on $(hostname) for ${USER} with exit status: ${exitstat}"
+
+    # keep ssh into background but allow 5 seconds before exit of parent script so ssh job can ping slack
+    if [[ -s "${HOME}"/bin/pingme && -x "${HOME}"/bin/pingme ]]; then
+        ssh helix "${HOME}/bin/pingme -u ${USER} -i white_check_mark -m "\"${PASSMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    else
+        ssh helix "${RVSETENV}/bin/pingme -u ${USER} -i white_check_mark -m "\"${PASSMSG}\""" >> /dev/null 2>&1 &
+        sleep 5
+    fi
+
+    echo -e "\n${PASSMSG}\n"
+fi
+
+echo "exit status was ${exitstat}"
+exit ${exitstat}
+
+## END ##
+

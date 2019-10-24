@@ -1,0 +1,6 @@
+jobname	sub_type	prev_jobs	dep_type	queue	memory_reserved	walltime	cpu_reserved	nodes	platform	jobid
+vs2_germline	scatter	none	none	batch	12gb	24:00:00	2	1	torque	1
+hc_germline	scatter	none	none	batch	12gb	48:00:00	4	1	torque	2
+merge_germline_snp	serial	vs2_germline	gather	batch	50gb	4:00:00	8	1	torque	3
+merge_hc_germline_snp	serial	hc_germline	gather	batch	50gb	4:00:00	8	1	torque	4
+cleanup_data	serial	merge_germline_snp,merge_hc_germline_snp	serial	batch	2gb	01:10:00	4	1	torque	5

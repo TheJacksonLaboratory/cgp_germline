@@ -1,0 +1,47 @@
+#!/bin/bash
+#PBS -N gvcf_get_gtfile_n25                                # name of the job
+#PBS -t 1-25
+#PBS -d /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs
+#PBS -o /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs/log_gatk4_hc_merge_gvcfs_and_genotype_n25.out
+#PBS -e /fastscratch/amins/cgp/germline/gatk4_hc/combined_gvcfs/log_gatk4_hc_merge_gvcfs_and_genotype_n25.out
+#PBS -q batch                                  # Job queue
+#PBS -l walltime=72:00:00                      # Walltime in minutes
+#PBS -l mem=32gb                             # Memory requirements in Kbytes
+#PBS -l nodes=1:ppn=2                 # CPU reserved
+#PBS -M amins@jax.org                           # for notifications
+#PBS -m a                              # send email when job ends 
+#PBS -r y                                         # make the jobs re-runnable
+#PBS -S /bin/bash                                 # use bash shell
+#PBS -V                                           # pass user env
+#PBS -j oe
+#PBS                                 # Any extra arguments passed onto queue
+
+## --- DO NOT EDIT from below here---- ##
+## following will always overwrite previous output file, if any.
+set +o noclobber
+
+## sleep for n seconds before running any command
+FORCEWAIT=$(shuf -i 2-10 -n 1)
+echo -e "\nWaiting for ${FORCEWAIT} seconds before starting workflow\n"
+sleep "${FORCEWAIT}"
+
+echo "BEGIN at $(date)"
+
+## Using avg size chromosomes: pass in batch queue
+CODEDIR="/home/amins/pipelines/cgp_varcalls"
+CHRLIST="${CODEDIR}/scripts/canfam_chrs_n25.list"
+export CHRLIST
+
+if [[ ! -f "$CHRLIST" ]]; then
+	echo -e "\nERROR: Missing chromosome list file at $CHRLIST\n"
+	exit 1
+fi
+
+echo "PBS_ARRAYID is $PBS_ARRAYID"
+export PBS_ARRAYID
+
+## using PBS array ID: specify variable PBS_ARRAYID at least once else jobs will not spawn. bash script has internal specification of handling arguments based on PBS_ARRAYID variable.
+"${CODEDIR}"/scripts/gatk_hc_merge_gvcfs_legacy_array.sh
+
+## END ##
+
